@@ -41,14 +41,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Make package public
-        # The Portainer host on vmd194708 pulls without registry
-        # credentials configured, same as every other pinned image in
-        # KLAHOME/IaC (all public upstream images). GHCR defaults new
-        # packages to private regardless of the linked repo's visibility.
-        run: |
-          curl -sf -X PATCH \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/orgs/klahome/packages/container/webstudio-builder" \
-            -d '{"visibility":"public"}'
+      # Note: this package defaults to private and the workflow's own
+      # GITHUB_TOKEN cannot change org package visibility (tried and
+      # confirmed 403 - needs an org-admin-scoped credential we don't have
+      # stored here). Until someone flips it to public in GitHub's package
+      # settings, KLAHOME/IaC's compose stack builds the image directly on
+      # vmd194708 instead of pulling this one - see docker-stacks/
+      # webstudio-builder/README.md "Image build" section. This CI build
+      # still validates that the image builds cleanly on every push.
