@@ -40,3 +40,15 @@ jobs:
           tags: ghcr.io/klahome/webstudio-builder:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Make package public
+        # The Portainer host on vmd194708 pulls without registry
+        # credentials configured, same as every other pinned image in
+        # KLAHOME/IaC (all public upstream images). GHCR defaults new
+        # packages to private regardless of the linked repo's visibility.
+        run: |
+          curl -sf -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/klahome/packages/container/webstudio-builder" \
+            -d '{"visibility":"public"}'
