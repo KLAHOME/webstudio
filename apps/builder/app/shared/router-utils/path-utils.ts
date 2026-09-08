@@ -115,13 +115,13 @@ export const planSubscriptionPath = (subscriptionId?: string) => {
 export const authCallbackPath = ({
   provider,
 }: {
-  provider: "google" | "github";
+  provider: "google" | "github" | "nextcloud";
 }) => `/auth/${provider}/callback`;
 
 export const authPath = ({
   provider,
 }: {
-  provider: "google" | "github" | "dev";
+  provider: "google" | "github" | "nextcloud" | "dev";
 }) => `/auth/${provider}`;
 
 export const restAssetsUploadPath = ({

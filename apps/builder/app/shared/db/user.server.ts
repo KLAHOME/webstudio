@@ -6,6 +6,7 @@ import {
 } from "@webstudio-is/trpc-interface/index.server";
 import type { GitHubProfile } from "remix-auth-github";
 import type { GoogleProfile } from "remix-auth-google";
+import type { NextcloudOidcProfile } from "~/services/nextcloud-oidc-strategy.server";
 import { z } from "zod";
 
 export type User = Omit<
@@ -124,7 +125,7 @@ const genericCreateAccount = async (
 
 export const createOrLoginWithOAuth = async (
   context: AppContext,
-  profile: GoogleProfile | GitHubProfile
+  profile: GoogleProfile | GitHubProfile | NextcloudOidcProfile
 ): Promise<User> => {
   const userData = {
     email: (profile.emails ?? [])[0]?.value,

@@ -10,6 +10,12 @@ const environment = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 
+  // Nextcloud OIDC login (see app/services/nextcloud-oidc-strategy.server.ts)
+  NEXTCLOUD_OIDC_CLIENT_ID: z.string().optional(),
+  NEXTCLOUD_OIDC_CLIENT_SECRET: z.string().optional(),
+  NEXTCLOUD_OIDC_ISSUER: z.string().url().optional(),
+  NEXTCLOUD_OIDC_REQUIRED_GROUP: z.string().default("KlaHome"),
+
   // Secret session key, context encode
   AUTH_SECRET: z.string().optional(),
 
@@ -91,6 +97,10 @@ const rawEnv = {
   GITHUB_ISSUE_REPORT_PRIVATE_KEY: process.env.GITHUB_ISSUE_REPORT_PRIVATE_KEY,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  NEXTCLOUD_OIDC_CLIENT_ID: process.env.NEXTCLOUD_OIDC_CLIENT_ID,
+  NEXTCLOUD_OIDC_CLIENT_SECRET: process.env.NEXTCLOUD_OIDC_CLIENT_SECRET,
+  NEXTCLOUD_OIDC_ISSUER: process.env.NEXTCLOUD_OIDC_ISSUER,
+  NEXTCLOUD_OIDC_REQUIRED_GROUP: process.env.NEXTCLOUD_OIDC_REQUIRED_GROUP,
   AUTH_SECRET: process.env.AUTH_SECRET,
   DEPLOYMENT_ENVIRONMENT: process.env.DEPLOYMENT_ENVIRONMENT,
   DEPLOYMENT_URL: process.env.DEPLOYMENT_URL,

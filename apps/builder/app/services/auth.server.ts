@@ -2,6 +2,10 @@ import { Authenticator } from "remix-auth";
 import { FormStrategy } from "remix-auth-form";
 import { GitHubStrategy, type GitHubProfile } from "remix-auth-github";
 import { GoogleStrategy, type GoogleProfile } from "remix-auth-google";
+import {
+  NextcloudOidcStrategy,
+  type NextcloudOidcProfile,
+} from "./nextcloud-oidc-strategy.server";
 import * as db from "~/shared/db";
 import { sessionStorage } from "~/services/session.server";
 import { AUTH_PROVIDERS } from "~/shared/session";
@@ -35,7 +39,7 @@ const strategyCallback = async ({
   profile,
   request,
 }: {
-  profile: GitHubProfile | GoogleProfile;
+  profile: GitHubProfile | GoogleProfile | NextcloudOidcProfile;
   request: Request;
 }) => {
   const context = await createContext(request);
@@ -84,6 +88,27 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
     strategyCallback
   );
   authenticator.use(google, "google");
+}
+
+if (
+  env.NEXTCLOUD_OIDC_CLIENT_ID &&
+  env.NEXTCLOUD_OIDC_CLIENT_SECRET &&
+  env.NEXTCLOUD_OIDC_ISSUER
+) {
+  const issuer = env.NEXTCLOUD_OIDC_ISSUER.replace(/\/+$/, "");
+  const nextcloud = new NextcloudOidcStrategy(
+    {
+      clientID: env.NEXTCLOUD_OIDC_CLIENT_ID,
+      clientSecret: env.NEXTCLOUD_OIDC_CLIENT_SECRET,
+      callbackURL: `${callbackOrigin}${authCallbackPath({ provider: "nextcloud" })}`,
+      authorizationURL: `${issuer}/apps/oidc/authorize`,
+      tokenURL: `${issuer}/apps/oidc/token`,
+      userInfoURL: `${issuer}/apps/oidc/userinfo`,
+      requiredGroup: env.NEXTCLOUD_OIDC_REQUIRED_GROUP,
+    },
+    strategyCallback
+  );
+  authenticator.use(nextcloud, "nextcloud");
 }
 
 if (env.DEV_LOGIN === "true") {

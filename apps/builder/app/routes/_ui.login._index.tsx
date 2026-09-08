@@ -99,6 +99,11 @@ export const loader = async ({
       isGoogleEnabled: Boolean(
         env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ),
+      isNextcloudEnabled: Boolean(
+        env.NEXTCLOUD_OIDC_CLIENT_ID &&
+          env.NEXTCLOUD_OIDC_CLIENT_SECRET &&
+          env.NEXTCLOUD_OIDC_ISSUER
+      ),
     },
     { headers }
   );

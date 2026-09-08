@@ -17,6 +17,7 @@ export type LoginProps = {
   errorMessage?: string;
   isGithubEnabled?: boolean;
   isGoogleEnabled?: boolean;
+  isNextcloudEnabled?: boolean;
   isSecretLoginEnabled?: boolean;
   devPlanNames?: string[];
 };
@@ -25,6 +26,7 @@ export const Login = ({
   errorMessage,
   isGithubEnabled,
   isGoogleEnabled,
+  isNextcloudEnabled,
   isSecretLoginEnabled,
   devPlanNames,
 }: LoginProps) => {
@@ -88,6 +90,18 @@ export const Login = ({
               >
                 Sign in with GitHub
               </Button>
+              {isNextcloudEnabled && (
+                <Button
+                  color="ghost"
+                  css={{
+                    border: `1px solid ${cssVar("--border-default")}`,
+                    height: theme.spacing[15],
+                  }}
+                  formAction={authPath({ provider: "nextcloud" })}
+                >
+                  Sign in with KLAHOME Nextcloud
+                </Button>
+              )}
             </Form>
             {isSecretLoginEnabled && (
               <SecretLogin devPlanNames={devPlanNames} />
