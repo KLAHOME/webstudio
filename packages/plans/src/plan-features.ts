@@ -51,6 +51,37 @@ export const defaultPlanFeatures: PlanFeatures = {
   maxSeatsPerWorkspace: 0,
 };
 
+/**
+ * Baseline plan for this self-hosted deployment.
+ *
+ * Upstream Webstudio is a paid SaaS: `defaultPlanFeatures` is the free tier and
+ * every capability is unlocked by a Stripe-backed UserProduct row. This install
+ * has no billing, so that fallback would leave every Nextcloud user on free
+ * forever. Here access is already gated by the Nextcloud login/group check, so
+ * anyone who gets in is entitled to the full builder.
+ *
+ * Limits stay finite on purpose. The limit checks and their user-facing error
+ * messages are only meaningful with a real ceiling, and a finite ceiling still
+ * bounds runaway resource use (assets, publishes) on a single VPS.
+ */
+export const selfHostedPlanFeatures: PlanFeatures = {
+  canDownloadAssets: true,
+  canRestoreBackups: true,
+  allowAdditionalPermissions: true,
+  allowDynamicData: true,
+  allowAuth: true,
+  allowContentMode: true,
+  allowStagingPublish: true,
+  maxContactEmailsPerProject: 1000,
+  maxDomainsAllowedPerUser: 100,
+  maxDailyPublishesPerUser: 1000,
+  maxWorkspaces: 100,
+  maxProjectsAllowedPerUser: 1000,
+  maxAssetsPerProject: 5000,
+  seatsIncluded: 100,
+  maxSeatsPerWorkspace: 100,
+};
+
 /** All user purchases (subscriptions and LTDs). subscriptionId present only for recurring subscriptions */
 export type Purchase = {
   planName: string;

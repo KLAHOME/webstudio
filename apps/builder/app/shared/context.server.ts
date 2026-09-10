@@ -4,7 +4,10 @@ import { authenticator } from "~/services/auth.server";
 import { trpcSharedClient } from "~/services/trpc.server";
 import { entryApi } from "./entri/entri-api.server";
 
-import { defaultPlanFeatures } from "@webstudio-is/plans";
+import {
+  defaultPlanFeatures,
+  selfHostedPlanFeatures,
+} from "@webstudio-is/plans";
 import {
   getPlanInfo,
   getAuthorizationOwnerId,
@@ -227,7 +230,7 @@ export const createContext = async (request: Request): Promise<AppContext> => {
     }
     return (
       (await getPlanInfo([ownerId], { postgrest })).get(ownerId) ?? {
-        planFeatures: defaultPlanFeatures,
+        planFeatures: selfHostedPlanFeatures,
         purchases: [] as AppContext["purchases"],
       }
     );
@@ -242,7 +245,7 @@ export const createContext = async (request: Request): Promise<AppContext> => {
 
   const getOwnerPlanFeatures = async (userId: string) => {
     const results = await getPlanInfo([userId], { postgrest });
-    return results.get(userId)?.planFeatures ?? defaultPlanFeatures;
+    return results.get(userId)?.planFeatures ?? selfHostedPlanFeatures;
   };
 
   const createTokenContext = async (authToken: string) => {

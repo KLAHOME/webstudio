@@ -3,6 +3,7 @@ import {
   type PlanFeatures,
   type PlanConfig,
   defaultPlanFeatures,
+  selfHostedPlanFeatures,
   parsePlansEnv,
 } from "./plan-features";
 
@@ -172,5 +173,37 @@ describe("parsePlansEnv", () => {
     expect(
       (result.get("Pro")!.features as Record<string, unknown>)["admin"]
     ).toBeUndefined();
+  });
+});
+
+describe("selfHostedPlanFeatures", () => {
+  test("unlocks every boolean capability", () => {
+    for (const [key, value] of Object.entries(selfHostedPlanFeatures)) {
+      if (typeof value === "boolean") {
+        expect(value, `${key} should be unlocked`).toBe(true);
+      }
+    }
+  });
+
+  test("is at least as permissive as the free tier on every numeric limit", () => {
+    for (const [key, value] of Object.entries(selfHostedPlanFeatures)) {
+      if (typeof value === "number") {
+        const free = defaultPlanFeatures[
+          key as keyof typeof defaultPlanFeatures
+        ] as number;
+        expect(
+          value,
+          `${key} should not be below the free tier`
+        ).toBeGreaterThanOrEqual(free);
+      }
+    }
+  });
+
+  test("keeps every limit finite so limit checks stay meaningful", () => {
+    for (const [key, value] of Object.entries(selfHostedPlanFeatures)) {
+      if (typeof value === "number") {
+        expect(Number.isFinite(value), `${key} should be finite`).toBe(true);
+      }
+    }
   });
 });

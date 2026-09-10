@@ -68,13 +68,42 @@ describe("seatSuspended (msw)", () => {
     expect(result.seatSuspended).toBe(false);
   });
 
-  test("returns workspace name when owner has default (free) plan", async () => {
+  // Self-hosted: an owner without products gets selfHostedPlanFeatures
+  // (maxWorkspaces > 1), so shared workspaces are never seat-suspended.
+  // Seat suspension only remains meaningful for an explicitly configured
+  // plan that caps maxWorkspaces at 1 — covered by the test below.
+  test("returns false when owner has no products (self-hosted default)", async () => {
     server.use(
       db.get("WorkspaceMember", () =>
         json([memberRow("ws-owner", "owner-1", "Owner Workspace")])
       ),
-      // getPlanInfo: no user products → defaultPlanFeatures (maxWorkspaces=1 → suspended)
       db.get("UserProduct", () => json([]))
+    );
+
+    const result = await resolveTopics(
+      ["seatSuspended"],
+      createContext("user-1")
+    );
+    expect(result.seatSuspended).toBe(false);
+  });
+
+  test("returns workspace name when owner's plan caps maxWorkspaces at 1", async () => {
+    process.env.PLANS = JSON.stringify([
+      { name: "Capped", features: { maxWorkspaces: 1 } },
+    ]);
+
+    server.use(
+      db.get("WorkspaceMember", () =>
+        json([memberRow("ws-owner", "owner-1", "Owner Workspace")])
+      ),
+      db.get("UserProduct", () =>
+        json([
+          { userId: "owner-1", productId: "prod-capped", subscriptionId: null },
+        ])
+      ),
+      db.get("Product", () =>
+        json([{ id: "prod-capped", name: "Capped", meta: {} }])
+      )
     );
 
     const result = await resolveTopics(

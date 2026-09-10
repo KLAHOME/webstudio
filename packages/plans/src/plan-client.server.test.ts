@@ -5,7 +5,11 @@ import {
   json,
   testContext,
 } from "@webstudio-is/postgrest/testing";
-import { type PlanFeatures, defaultPlanFeatures } from "./plan-features";
+import {
+  type PlanFeatures,
+  defaultPlanFeatures,
+  selfHostedPlanFeatures,
+} from "./plan-features";
 import {
   getPlanInfo,
   getExtraPaidSeats,
@@ -42,12 +46,15 @@ describe("getPlanInfo (msw)", () => {
     expect(result.size).toBe(0);
   });
 
-  test("user with no products returns defaultPlanFeatures", async () => {
+  // Self-hosted deployment: there is no billing, so a user without any
+  // product is a normal logged-in user and gets the full builder, not the
+  // upstream free tier.
+  test("user with no products returns selfHostedPlanFeatures", async () => {
     server.use(db.get("UserProduct", () => json([])));
 
     const result = await getPlanInfo(["user-1"], testContext);
     expect(result.get("user-1")).toEqual({
-      planFeatures: defaultPlanFeatures,
+      planFeatures: selfHostedPlanFeatures,
       purchases: [],
     });
   });

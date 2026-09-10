@@ -3,6 +3,7 @@ import {
   type PlanFeatures,
   planFeatures,
   defaultPlanFeatures,
+  selfHostedPlanFeatures,
   parsePlansEnv,
   type Purchase,
 } from "./plan-features";
@@ -158,7 +159,7 @@ export const getPlanInfo = async (
     return new Map(
       userIds.map((userId) => [
         userId,
-        { planFeatures: defaultPlanFeatures, purchases: [] },
+        { planFeatures: selfHostedPlanFeatures, purchases: [] },
       ])
     );
   }
@@ -197,7 +198,14 @@ export const getPlanInfo = async (
       return [
         userId,
         {
-          planFeatures: mergeProductMetas(productMetas),
+          // A user with no resolvable product gets the self-hosted baseline
+          // instead of the upstream free tier. An explicitly configured
+          // product still wins outright, so an operator can deliberately set
+          // a lower limit than the baseline for a specific plan.
+          planFeatures:
+            productMetas.length === 0
+              ? selfHostedPlanFeatures
+              : mergeProductMetas(productMetas),
           purchases: buildPurchases(userProducts, productIdToName),
         },
       ];
