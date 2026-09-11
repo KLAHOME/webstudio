@@ -9,6 +9,7 @@ import {
   type PlanFeatures,
   defaultPlanFeatures,
   selfHostedPlanFeatures,
+  selfHostedPlanName,
 } from "./plan-features";
 import {
   getPlanInfo,
@@ -55,8 +56,23 @@ describe("getPlanInfo (msw)", () => {
     const result = await getPlanInfo(["user-1"], testContext);
     expect(result.get("user-1")).toEqual({
       planFeatures: selfHostedPlanFeatures,
-      purchases: [],
+      purchases: [{ planName: selfHostedPlanName }],
     });
+  });
+
+  // The UI reads the plan *label* from purchases, not from planFeatures, so an
+  // empty list here would show a fully-unlocked user as "Free".
+  test("user with no products is labelled as the self-hosted plan", async () => {
+    server.use(db.get("UserProduct", () => json([])));
+
+    const purchases = (await getPlanInfo(["user-1"], testContext)).get(
+      "user-1"
+    )?.purchases;
+    expect(purchases).toHaveLength(1);
+    expect(purchases?.[0].planName).toBe(selfHostedPlanName);
+    // No Stripe subscription exists, so the profile menu must render a plain
+    // label instead of a link to subscription management.
+    expect(purchases?.[0].subscriptionId).toBeUndefined();
   });
 
   test("user with one product resolves plan features from PLANS env + meta merge", async () => {

@@ -64,6 +64,17 @@ export const defaultPlanFeatures: PlanFeatures = {
  * messages are only meaningful with a real ceiling, and a finite ceiling still
  * bounds runaway resource use (assets, publishes) on a single VPS.
  */
+/**
+ * Plan name shown in the UI for the self-hosted baseline.
+ *
+ * The builder decides what to *display* from `purchases`, not from
+ * `planFeatures`: the profile menu renders `purchase.planName` and falls back
+ * to a "upgrade" link when the list is empty, and share-project treats
+ * `purchases.length === 0` as the free plan. Unlocking features alone
+ * therefore still showed every user as Free.
+ */
+export const selfHostedPlanName = "Pro";
+
 export const selfHostedPlanFeatures: PlanFeatures = {
   canDownloadAssets: true,
   canRestoreBackups: true,

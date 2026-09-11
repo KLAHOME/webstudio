@@ -4,6 +4,7 @@ import {
   planFeatures,
   defaultPlanFeatures,
   selfHostedPlanFeatures,
+  selfHostedPlanName,
   parsePlansEnv,
   type Purchase,
 } from "./plan-features";
@@ -48,6 +49,19 @@ export const mergeProductMetas = (
     )
   ) as PlanFeatures;
 };
+
+/**
+ * Synthetic purchase for the self-hosted baseline.
+ *
+ * The UI reads the plan *label* from `purchases`, so a user with no product
+ * would still be shown as Free even with every feature unlocked. There is no
+ * Stripe subscription here, so `subscriptionId` is deliberately omitted: the
+ * profile menu renders such entries as a plain label rather than a link to
+ * billing management.
+ */
+export const selfHostedPurchases = (): Array<Purchase> => [
+  { planName: selfHostedPlanName },
+];
 
 export const buildPurchases = (
   userProducts: Array<{
@@ -159,7 +173,10 @@ export const getPlanInfo = async (
     return new Map(
       userIds.map((userId) => [
         userId,
-        { planFeatures: selfHostedPlanFeatures, purchases: [] },
+        {
+          planFeatures: selfHostedPlanFeatures,
+          purchases: selfHostedPurchases(),
+        },
       ])
     );
   }
@@ -206,7 +223,10 @@ export const getPlanInfo = async (
             productMetas.length === 0
               ? selfHostedPlanFeatures
               : mergeProductMetas(productMetas),
-          purchases: buildPurchases(userProducts, productIdToName),
+          purchases:
+            productMetas.length === 0
+              ? selfHostedPurchases()
+              : buildPurchases(userProducts, productIdToName),
         },
       ];
     })

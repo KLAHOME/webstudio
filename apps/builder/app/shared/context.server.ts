@@ -11,6 +11,7 @@ import {
 import {
   getPlanInfo,
   getAuthorizationOwnerId,
+  selfHostedPurchases,
 } from "@webstudio-is/plans/index.server";
 import { staticEnv } from "~/env/env.static.server";
 import { createClient } from "@webstudio-is/postgrest/index.server";
@@ -231,7 +232,7 @@ export const createContext = async (request: Request): Promise<AppContext> => {
     return (
       (await getPlanInfo([ownerId], { postgrest })).get(ownerId) ?? {
         planFeatures: selfHostedPlanFeatures,
-        purchases: [] as AppContext["purchases"],
+        purchases: selfHostedPurchases() as AppContext["purchases"],
       }
     );
   };
