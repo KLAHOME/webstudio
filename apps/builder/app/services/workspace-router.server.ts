@@ -128,16 +128,13 @@ export const workspaceRouter = router({
           throw new Error("Upgrade your plan to invite members to workspaces.");
         }
 
-        const isDevEnvironment = env.DEPLOYMENT_ENVIRONMENT === "development";
-        const hasPaymentWorker =
-          env.PAYMENT_WORKER_URL && env.PAYMENT_WORKER_TOKEN;
-
-        if (!hasPaymentWorker && !isDevEnvironment) {
-          throw new Error(
-            "Adding workspace members requires a configured payment provider."
-          );
-        }
-
+        // Self-hosted: there is no payment provider. Access is already gated by
+        // the Nextcloud login/group check, so any authenticated user is
+        // entitled to the full builder and may be invited to a workspace. The
+        // upstream "requires a configured payment provider" gate and the
+        // per-invite Stripe seat pre-charge are intentionally omitted here.
+        // The finite seat ceiling below is kept only to bound resource use on
+        // a single VPS.
         const { maxSeatsPerWorkspace } = plan;
         if (maxSeatsPerWorkspace > 0) {
           const [membersResult, pendingResult] = await Promise.all([
@@ -165,58 +162,14 @@ export const workspaceRouter = router({
             (membersResult.count ?? 0) + (pendingResult.count ?? 0);
           if (currentCount >= maxSeatsPerWorkspace) {
             throw new Error(
-              `This workspace has reached its seat limit of ${maxSeatsPerWorkspace}. Remove a member or upgrade your plan to invite more.`
+              `This workspace has reached its seat limit of ${maxSeatsPerWorkspace}. Remove a member to invite more.`
             );
           }
         }
 
-        // Pre-charge the seat before adding the member (Figma model).
-        // We validate user existence first so that a missing account never
-        // triggers a billing change.
-        // When the payment worker is configured, a billing failure aborts the
-        // invite so the member is never added. When the worker URL is not set
-        // (self-hosted / dev), syncSeats returns early and this is a no-op.
-
-        // Validate the invitee exists and is not already a member before
-        // touching billing. This mirrors the checks in workspaceApi.addMember
-        // so that we never charge for a doomed invite.
-        const inviteeResult = await ctx.postgrest.client
-          .from("User")
-          .select("id")
-          .eq("email", input.email)
-          .maybeSingle();
-        if (inviteeResult.error) {
-          throw inviteeResult.error;
-        }
-        if (inviteeResult.data === null) {
-          throw new Error(
-            "No Webstudio account found. The user needs to sign up first."
-          );
-        }
-        const existingMemberResult = await ctx.postgrest.client
-          .from("WorkspaceMember")
-          .select("userId")
-          .eq("workspaceId", input.workspaceId)
-          .eq("userId", inviteeResult.data.id)
-          .is("removedAt", null)
-          .maybeSingle();
-        if (existingMemberResult.error) {
-          throw existingMemberResult.error;
-        }
-        if (existingMemberResult.data !== null) {
-          throw new Error("Already a member of this workspace.");
-        }
-
-        try {
-          await syncSeats(input.workspaceId, +1);
-        } catch (error) {
-          const technical =
-            error instanceof Error ? error.message : String(error);
-          throw new Error(
-            `Unable to update billing. Please try again or contact support. (${technical})`
-          );
-        }
-
+        // workspaceApi.addMember validates that the invitee exists and is not
+        // already a member, then creates a pending workspaceInvite
+        // notification the recipient accepts.
         const { notificationId } = await workspaceApi.addMember(input, ctx);
 
         return { success: true as const, notificationId };
@@ -303,6 +256,47 @@ export const workspaceRouter = router({
             maxSeats: ownerPlan.seatsIncluded + (extraPaidSeats ?? 0),
           },
         };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
+    }),
+
+  /**
+   * All registered users, for the "invite member" picker on this self-hosted
+   * deploy. Only a workspace owner may enumerate accounts, and only the fields
+   * needed to render and select a member are returned (no provider/internal
+   * data). Upstream SaaS invites by typing an email; here the operator picks
+   * from the known Nextcloud-provisioned accounts instead.
+   */
+  listRegisteredUsers: procedure
+    .input(z.object({ workspaceId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      try {
+        await workspaceApi.assertWorkspaceOwnerPlan(input.workspaceId, ctx);
+
+        const result = await ctx.postgrest.client
+          .from("User")
+          .select("id, email, username")
+          .not("email", "is", null)
+          .order("email", { ascending: true });
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        const users = (result.data ?? []).flatMap((user) =>
+          user.email === null || user.email === undefined
+            ? []
+            : [
+                {
+                  userId: user.id,
+                  email: user.email,
+                  username: user.username ?? null,
+                },
+              ]
+        );
+
+        return { success: true as const, data: users };
       } catch (error) {
         return createErrorResponse(error);
       }
