@@ -23,4 +23,10 @@ if [ -z "$SERVER_ENTRY" ]; then
   echo "No build/server/**/index.js found - build output layout changed?" >&2
   exit 1
 fi
-exec node_modules/.bin/remix-serve "$SERVER_ENTRY"
+
+# Use our own Express server instead of remix-serve: remix-serve never enables
+# Express's "trust proxy", so req.protocol stayed "http" behind Traefik's TLS
+# termination and Webstudio's own OAuth rejected the resulting http://
+# redirect_uri when opening a project. See apps/builder/server.mjs.
+export SERVER_BUILD_PATH="$PWD/$SERVER_ENTRY"
+exec node server.mjs
