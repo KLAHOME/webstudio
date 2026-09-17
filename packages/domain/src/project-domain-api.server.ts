@@ -139,6 +139,8 @@ export const listProjectPublishes = async (
           target: getSaasDeploymentTarget(deployment),
           domains: deployment.domains,
           createdAt: build.createdAt,
+          publishedByEmail: deployment.publishedByEmail,
+          publishedByName: deployment.publishedByName,
         },
       ];
     }),
@@ -185,6 +187,14 @@ export const getProjectPublishJob = async (
       deployment !== undefined && deployment.destination !== "static"
         ? deployment.domains
         : [],
+    publishedByEmail:
+      deployment !== undefined && deployment.destination !== "static"
+        ? deployment.publishedByEmail
+        : undefined,
+    publishedByName:
+      deployment !== undefined && deployment.destination !== "static"
+        ? deployment.publishedByName
+        : undefined,
     createdAt: publishJob.createdAt,
     completedAt:
       status === "success" || status === "failed"
@@ -197,10 +207,16 @@ const createSaasDeployment = ({
   project,
   domains,
   target,
+  publisher,
 }: {
   project: LoadedProject;
   domains: string[];
   target: PublishTarget;
+  publisher?: {
+    userId?: string;
+    email?: string;
+    name?: string;
+  };
 }): Deployment => ({
   destination: "saas",
   target,
@@ -209,7 +225,36 @@ const createSaasDeployment = ({
   excludeWstdDomainFromSearch: project.domainsVirtual.some(
     (domain) => domain.status === "ACTIVE" && domain.verified
   ),
+  publishedByUserId: publisher?.userId,
+  publishedByEmail: publisher?.email,
+  publishedByName: publisher?.name,
 });
+
+/**
+ * Resolves who is about to publish, for attribution on the resulting Build's
+ * deployment record. Only a logged-in "user" session identifies a person;
+ * API tokens and service calls publish on behalf of an account, not a user,
+ * so they are left unattributed rather than guessed.
+ */
+const resolvePublisherIdentity = async (context: AppContext) => {
+  if (context.authorization.type !== "user") {
+    return undefined;
+  }
+  const userId = context.authorization.userId;
+  const result = await context.postgrest.client
+    .from("User")
+    .select("email, username")
+    .eq("id", userId)
+    .maybeSingle();
+  if (result.error || result.data === null) {
+    return { userId };
+  }
+  return {
+    userId,
+    email: result.data.email ?? undefined,
+    name: result.data.username ?? undefined,
+  };
+};
 
 export const publishProject = async (
   {
@@ -223,10 +268,11 @@ export const publishProject = async (
   },
   context: AppContext
 ) => {
+  const publisher = await resolvePublisherIdentity(context);
   const build = await createProductionBuild(
     {
       projectId: project.id,
-      deployment: createSaasDeployment({ project, domains, target }),
+      deployment: createSaasDeployment({ project, domains, target, publisher }),
     },
     context
   );

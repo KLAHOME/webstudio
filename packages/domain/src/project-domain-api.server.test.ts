@@ -110,6 +110,10 @@ const devBuildRow = {
 const devBuildHandler = (row: typeof devBuildRow = devBuildRow) =>
   db.get("Build", () => json([row]));
 
+const publisherUserHandler = db.get("User", () =>
+  json({ email: "user-1@example.com", username: "user-one" })
+);
+
 const createPublishContext = (
   publish = vi.fn().mockResolvedValue({ success: true })
 ) =>
@@ -155,6 +159,7 @@ test("publishes saas project through shared domain service", async () => {
   server.use(
     projectHandler,
     devBuildHandler(),
+    publisherUserHandler,
     productionBuildHandler((body) => {
       productionBuildRequest = body;
     })
@@ -181,6 +186,9 @@ test("publishes saas project through shared domain service", async () => {
     domains: ["project.wstd.io", "example.com"],
     assetsDomain: "project.wstd.io",
     excludeWstdDomainFromSearch: true,
+    publishedByUserId: "user-1",
+    publishedByEmail: "user-1@example.com",
+    publishedByName: "user-one",
   });
   expect(publish).toHaveBeenCalledWith({
     builderOrigin: "https://apps.webstudio.is",
@@ -196,6 +204,7 @@ test("reports local-dev publish when deployment publisher is unavailable", async
   server.use(
     projectHandler,
     devBuildHandler(),
+    publisherUserHandler,
     productionBuildHandler(() => {})
   );
 
@@ -276,6 +285,7 @@ test("rejects publishing when dev build has orphan resource references", async (
         },
       ]),
     }),
+    publisherUserHandler,
     productionBuildHandler(() => {
       didCreateProductionBuild = true;
     })
@@ -434,6 +444,7 @@ test("preserves a production target with one explicit custom domain", async () =
   server.use(
     projectHandler,
     devBuildHandler(),
+    publisherUserHandler,
     productionBuildHandler(({ deployment }) => {
       storedDeployment = deployment;
     })
@@ -469,6 +480,8 @@ test("preserves a production target with one explicit custom domain", async () =
         target: "production",
         domains: ["example.com"],
         createdAt: "2024-01-03T00:00:00.000Z",
+        publishedByEmail: "user-1@example.com",
+        publishedByName: "user-one",
       },
     ],
   });

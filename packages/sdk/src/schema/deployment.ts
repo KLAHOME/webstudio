@@ -29,6 +29,14 @@ export const deployment = z.union([
      */
     projectDomain: z.string().optional(),
     excludeWstdDomainFromSearch: z.boolean().optional(),
+    /**
+     * KLAHOME self-host addition (Deck card 819): identifies who clicked
+     * Publish, since the SaaS deploy backend is not present here and the
+     * publish->git sync automation has no other way to attribute a build.
+     */
+    publishedByUserId: z.string().optional(),
+    publishedByEmail: z.string().optional(),
+    publishedByName: z.string().optional(),
   }),
 ]);
 
