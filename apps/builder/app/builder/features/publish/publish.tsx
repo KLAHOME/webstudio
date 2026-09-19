@@ -428,34 +428,6 @@ const $restrictedFeatures = computed(
     })
 );
 
-const usePublishCountdown = (isPublishing: boolean) => {
-  const [countdown, setCountdown] = useState<number | undefined>(undefined);
-
-  useEffect(() => {
-    if (isPublishing === false) {
-      setCountdown(undefined);
-      return;
-    }
-
-    setCountdown(60);
-
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === undefined || prev <= 0) {
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [isPublishing]);
-
-  return countdown;
-};
-
 const Publish = ({
   project,
   timesLeft,
@@ -482,7 +454,6 @@ const Publish = ({
   const [hasSelectedDomains, setHasSelectedDomains] = useState(false);
   const [hasCustomDomainsSelected, setHasCustomDomainsSelected] =
     useState(false);
-  const countdown = usePublishCountdown(isPublishing);
 
   useEffect(() => {
     const form = buttonRef.current?.closest("form");
@@ -571,53 +542,27 @@ const Publish = ({
       return;
     }
 
-    let sleepTime = 15000;
-    const timeToFinish = Date.now() + PENDING_TIMEOUT + 2 * sleepTime;
+    // Kevin 2026-09-19 (Deck 819): the previous 60s-countdown-then-indefinite-
+    // polling loop left no clear confirmation of whether/when publish had
+    // finished. Publish is only used here as the sync-script trigger (the
+    // openclaw-host timer picks up the actual bundle independently every 5
+    // minutes), so there is no need to block the button on the SaaS build
+    // finishing - refresh once immediately so the status reflects the
+    // just-triggered publish, and let the button return to normal right away.
+    await refresh();
 
-    // Wait until project is published or failed
-    while (Date.now() < timeToFinish) {
-      await refresh();
-
-      const project = $project.get();
-
-      if (project == null) {
-        throw new Error("Project not found");
-      }
-
-      const { statusText, status } =
-        project.latestBuildVirtual != null
-          ? getPublishStatusAndText(project.latestBuildVirtual)
-          : {
-              statusText: "Not published",
-              status: "PENDING" as const,
-            };
-
-      if (status === "PUBLISHED") {
-        toast.success(
-          <>
-            The project has been successfully published.{" "}
-            {timesLeft > 0 && timesLeft <= 10 && (
-              <div>
-                You have {timesLeft} out of {maxDailyPublishesPerUser} daily
-                publications remaining. The counter resets tomorrow.
-              </div>
-            )}
-          </>,
-          { duration: 10000 }
-        );
-        break;
-      }
-
-      if (status === "FAILED") {
-        toast.error(statusText);
-        setPublishError(statusText);
-        break;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, sleepTime));
-
-      sleepTime = Math.max(5000, sleepTime - 5000);
-    }
+    toast.success(
+      <>
+        Publish triggered.{" "}
+        {timesLeft > 0 && timesLeft <= 10 && (
+          <div>
+            You have {timesLeft} out of {maxDailyPublishesPerUser} daily
+            publications remaining. The counter resets tomorrow.
+          </div>
+        )}
+      </>,
+      { duration: 10000 }
+    );
   };
 
   const handlePublish = (formData: FormData) => {
@@ -670,14 +615,6 @@ const Publish = ({
     });
   };
 
-  const hasPendingState = project.latestBuildVirtual
-    ? getPublishStatusAndText(project.latestBuildVirtual).status === "PENDING"
-    : false;
-
-  const isPublishInProgress = isPublishing || hasPendingState;
-  const showPendingState =
-    isPublishInProgress && (countdown === undefined || countdown === 0);
-
   return (
     <Flex gap={2} shrink={false} direction={"column"}>
       {publishError && <Text color="destructive">{publishError}</Text>}
@@ -689,8 +626,8 @@ const Publish = ({
 
       <Tooltip
         content={
-          isPublishInProgress
-            ? "Publish process in progress"
+          isPublishing
+            ? undefined
             : hasSelectedDomains
               ? undefined
               : "Select at least one domain to publish"
@@ -706,7 +643,7 @@ const Publish = ({
             }
           }}
           color="primary"
-          state={showPendingState ? "pending" : undefined}
+          state={isPublishing ? "pending" : undefined}
           disabled={
             hasSelectedDomains === false ||
             disabled ||
@@ -714,9 +651,7 @@ const Publish = ({
             userPublishCount >= maxDailyPublishesPerUser
           }
         >
-          {countdown !== undefined && countdown > 0
-            ? `Publishing (${countdown}s)`
-            : "Publish"}
+          Publish
         </Button>
       </Tooltip>
     </Flex>
